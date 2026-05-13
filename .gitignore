@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+*.py.tmp*
 *.egg-info/
 .env
 model.pkl
