@@ -1,0 +1,77 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+
+
+POSITION_MAP = {
+    "Goalkeeper": "GK",
+    "Centre-Back": "DF", "Left-Back": "DF", "Right-Back": "DF",
+    "Defensive Midfield": "MF", "Central Midfield": "MF",
+    "Attacking Midfield": "MF", "Left Midfield": "MF", "Right Midfield": "MF",
+    "Left Winger": "FW", "Right Winger": "FW",
+    "Centre-Forward": "FW", "Second Striker": "FW",
+}
+
+
+def load_data(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    return df
+
+
+def clean(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    # 数値変換
+    if df["transfer_fee"].dtype == object:
+        df["transfer_fee"] = (
+            df["transfer_fee"]
+            .astype(str)
+            .str.replace(r"[€£$,]", "", regex=True)
+            .str.replace("m", "e6", regex=False)
+            .str.replace("k", "e3", regex=False)
+            .str.strip()
+        )
+        df["transfer_fee"] = pd.to_numeric(df["transfer_fee"], errors="coerce")
+
+    df = df.dropna(subset=["transfer_fee"])
+    df = df[df["transfer_fee"] > 0]
+
+    # ポジション簡略化
+    if "position" in df.columns:
+        df["position_group"] = df["position"].map(POSITION_MAP).fillna("Other")
+
+    # 年齢
+    if "age" in df.columns:
+        df["age"] = pd.to_numeric(df["age"], errors="coerce")
+        df = df[df["age"].between(15, 45)]
+
+    return df.reset_index(drop=True)
+
+
+def get_features(df: pd.DataFrame):
+    feature_cols = []
+    cat_cols = []
+
+    for col in ["age", "goals", "assists", "appearances", "minutes_played",
+                "yellow_cards", "red_cards", "goals_per_game"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+            feature_cols.append(col)
+
+    for col in ["position_group", "position", "league", "nationality",
+                "club", "from_club", "to_club"]:
+        if col in df.columns:
+            feature_cols.append(col)
+            cat_cols.append(col)
+
+    encoders = {}
+    for col in cat_cols:
+        le = LabelEncoder()
+        df[col + "_enc"] = le.fit_transform(df[col].astype(str))
+        feature_cols.remove(col)
+        feature_cols.append(col + "_enc")
+        encoders[col] = le
+
+    X = df[feature_cols].fillna(0)
+    y = np.log1p(df["transfer_fee"])
+    return X, y, encoders, feature_cols

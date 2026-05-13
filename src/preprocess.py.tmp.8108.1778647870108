@@ -1,0 +1,84 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+
+TARGET = "current_value"
+
+NUMERIC_FEATURES = [
+    "age", "height", "appearance", "goals", "assists",
+    "yellow cards", "second yellow cards", "red cards",
+    "goals conceded", "clean sheets", "minutes played",
+    "days_injured", "games_injured", "award", "winger",
+    "highest_value",
+]
+
+CATEGORICAL_FEATURES = ["position", "team"]
+
+
+def load_and_clean(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+
+    df = df.dropna(subset=[TARGET])
+    df = df[df[TARGET] > 0]
+    df = df[df["age"].between(15, 45)]
+
+    for col in NUMERIC_FEATURES:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    df["goals_per_game"] = df["goals"] / df["appearance"].replace(0, np.nan)
+    df["assists_per_game"] = df["assists"] / df["appearance"].replace(0, np.nan)
+    df["minutes_per_game"] = df["minutes played"] / df["appearance"].replace(0, np.nan)
+    df[["goals_per_game", "assists_per_game", "minutes_per_game"]] = (
+        df[["goals_per_game", "assists_per_game", "minutes_per_game"]].fillna(0)
+    )
+
+    df["injury_rate"] = df["games_injured"] / (df["appearance"] + df["games_injured"]).replace(0, np.nan)
+    df["injury_rate"] = df["injury_rate"].fillna(0)
+
+    df["age_group"] = pd.cut(
+        df["age"], bins=[14, 21, 25, 29, 33, 50],
+        labels=["U21", "22-25", "26-29", "30-33", "34+"]
+    ).astype(str)
+
+    return df.reset_index(drop=True)
+
+
+ENGINEERED_FEATURES = [
+    "goals_per_game", "assists_per_game", "minutes_per_game", "injury_rate"
+]
+
+
+def build_features(df: pd.DataFrame):
+    numeric_cols = [c for c in NUMERIC_FEATURES if c in df.columns] + ENGINEERED_FEATURES
+    cat_cols = [c for c in CATEGORICAL_FEATURES if c in df.columns]
+
+    feat_df = df[numeric_cols].copy()
+    encoders = {}
+
+    for col in cat_cols:
+        le = LabelEncoder()
+        feat_df[col + "_enc"] = le.fit_transform(df[col].astype(str))
+        encoders[col] = le
+
+    feature_names = feat_df.columns.tolist()
+    X = feat_df.values
+    y = np.log1p(df[TARGET].values)
+
+    return X, y, encoders, feature_names
+
+
+def transform_single(row: dict, encoders: dict, feature_names: list) -> np.ndarray:
+    values = []
+    for feat in feature_names:
+        if feat.endswith("_enc"):
+            base = feat[:-4]
+            val = row.get(base, "")
+            le = encoders[base]
+            if val in le.classes_:
+                values.append(le.transform([val])[0])
+            else:
+                values.append(0)
+        else:
+            values.append(float(row.get(feat, 0)))
+    return np.array(values).reshape(1, -1)
