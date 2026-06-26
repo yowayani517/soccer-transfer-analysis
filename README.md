@@ -25,6 +25,31 @@
 
 データソース：[Kaggle - Football Players Transfermarkt Dataset](https://www.kaggle.com/datasets/davidcariboo/player-scores)
 
+本プロジェクトには、用途の異なる **2つのフロントエンド** がある。
+
+| | 内容 | 技術 |
+|:---|:---|:---|
+| 🟢 **Streamlit アプリ**（[`app.py`](app.py)） | 学習済みXGBoostモデルが**実際に推論**するMLダッシュボード | Python / Streamlit / Plotly |
+| 🟡 **Transfer Alpha Terminal**（[`terminal/`](terminal/)） | 端末風UIの**静的フロント実装**（依存ゼロ・ダブルクリック起動） | Vanilla HTML / CSS / JS |
+
+---
+
+## 🟡 Transfer Alpha Terminal（端末風UI）
+
+Bloomberg端末をイメージしたダーク×アンバーのUIデザイン。`terminal/index.html` を開くだけで動作（ライブラリ・ビルド不要）。
+
+<div align="center">
+<img src="docs/terminal-demo.gif" alt="Transfer Alpha Terminal のデモ" width="820">
+</div>
+
+- ライブ時計・KPIカウントアップ・VALUE FEED ティッカー
+- 4タブ（コスパ発掘 / 価値を予測 / データ分析 / モデル詳細）切替
+- 既存選手の予測ゲージ、スタッツを動かすとリアルタイム再計算するカスタム予測
+- バリュエーション・マップ、特徴量重要度、予測精度の散布図
+
+> ⚠️ ターミナル版に表示される数値は **UI実装のための代表値（デモ）** です。実際の学習モデルによる推論は Streamlit 版（`app.py`）で動作します。
+> デザインは [Claude Design](https://claude.ai/design) で作成し、独自ランタイムに依存しない単体のHTML/CSS/JSへ移植しました。
+
 ---
 
 ## ✨ 主な機能（4タブ構成）

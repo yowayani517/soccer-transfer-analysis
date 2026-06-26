@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transfer Alpha · Player Valuation Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+:root{
+ --bg:#0a0a0b; --panel:#121214; --panel2:#17171a; --inset:#0d0d0f;
+ --line:rgba(255,255,255,0.07); --line2:rgba(255,255,255,0.13);
+ --text:#ededf0; --muted:#8a8b91; --faint:#56575d;
+ --accent:#d6a23a; --accent-dim:rgba(214,162,58,0.13);
+ --pos:#48c07a; --pos-dim:rgba(72,192,122,0.12);
+ --neg:#e0566c; --neg-dim:rgba(224,86,108,0.12);
+}
+body{background:var(--bg);background-image:radial-gradient(1000px 520px at 82% -12%, rgba(214,162,58,0.06), transparent 62%);color:var(--text);font-family:'IBM Plex Sans JP',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+::selection{background:rgba(214,162,58,0.3);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:#26262b;border-radius:5px;border:2px solid var(--bg);}
+::-webkit-scrollbar-thumb:hover{background:#36363c;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes rowIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+@keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes dotIn{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes pulseDot{0%,100%{opacity:1}50%{opacity:0.3}}
+.tabrow{display:grid;gap:10px;align-items:center;padding:9px 16px;border-top:1px solid var(--line);animation:rowIn .5s ease both;}
+.tabrow:hover{background:var(--panel2);}
+.thead{display:grid;gap:10px;padding:9px 16px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.08em;color:var(--faint);text-transform:uppercase;}
+.cols{grid-template-columns:24px 1fr 40px 30px 60px 60px 88px;}
+.ellip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+select{outline:none;}
+button{font-family:inherit;}
+</style>
+</head>
+<body>
+<div style="min-height:100vh;">
+
+  <!-- ===== TOP BAR ===== -->
+  <header style="display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 24px;border-bottom:1px solid var(--line);background:rgba(10,10,11,0.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:30;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="mono" style="width:30px;height:30px;border:1px solid var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:16px;box-shadow:0 0 18px var(--accent-dim);">α</div>
+      <div style="display:flex;flex-direction:column;line-height:1.1;">
+        <span class="mono" style="font-weight:700;font-size:14px;letter-spacing:0.16em;">TRANSFER&nbsp;ALPHA</span>
+        <span class="mono" style="font-size:9.5px;letter-spacing:0.26em;color:var(--faint);text-transform:uppercase;">Player Valuation Terminal</span>
+      </div>
+    </div>
+    <div class="mono" style="display:flex;align-items:center;gap:10px;font-size:11px;">
+      <div style="display:flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--line);border-radius:6px;color:var(--muted);">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--pos);box-shadow:0 0 8px var(--pos);animation:pulseDot 2s ease-in-out infinite;"></span>
+        <span style="color:var(--pos);letter-spacing:0.08em;">LIVE</span>
+      </div>
+      <div style="padding:5px 11px;border:1px solid var(--line);border-radius:6px;color:var(--muted);letter-spacing:0.04em;">MODEL&nbsp;<span style="color:var(--text);">XGB · v2.1</span></div>
+      <div style="padding:5px 11px;border:1px solid var(--line);border-radius:6px;color:var(--muted);letter-spacing:0.04em;">CV R²&nbsp;<span style="color:var(--accent);">0.671</span></div>
+      <div style="padding:5px 11px;border:1px solid var(--line);border-radius:6px;color:var(--text);min-width:74px;text-align:center;"><span id="clock">--:--:--</span></div>
+    </div>
+  </header>
+
+  <!-- ===== TICKER ===== -->
+  <div style="border-bottom:1px solid var(--line);background:var(--inset);overflow:hidden;height:34px;display:flex;align-items:center;position:relative;">
+    <div class="mono" style="position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;padding:0 12px;background:var(--inset);border-right:1px solid var(--line);font-size:10px;letter-spacing:0.18em;color:var(--accent);">VALUE FEED</div>
+    <div style="display:flex;white-space:nowrap;animation:marquee 52s linear infinite;padding-left:120px;">
+      <div style="display:flex;" id="ticker1"></div>
+      <div style="display:flex;" id="ticker2" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- ===== CONTAINER ===== -->
+  <div style="max-width:1320px;margin:0 auto;padding:26px 24px 56px;">
+
+    <!-- TITLE LINE -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
+      <div>
+        <div class="mono" style="font-size:11px;letter-spacing:0.22em;color:var(--accent);margin-bottom:7px;">MARKET&nbsp;INTELLIGENCE</div>
+        <h1 style="margin:0;font-size:27px;font-weight:700;letter-spacing:-0.01em;">移籍市場バリュエーション</h1>
+        <p style="margin:7px 0 0;color:var(--muted);font-size:13.5px;max-width:620px;line-height:1.6;">10,754名の選手データを学習した機械学習モデルが市場価値を推定し、<span style="color:var(--text);">市場が見落とした割安な選手</span>を自動で発掘する。</p>
+      </div>
+      <div class="mono" style="display:flex;gap:8px;font-size:10.5px;">
+        <span style="padding:5px 10px;border:1px solid var(--line);border-radius:5px;color:var(--muted);">SOURCE&nbsp;<span style="color:var(--text);">Transfermarkt</span></span>
+        <span style="padding:5px 10px;border:1px solid var(--line);border-radius:5px;color:var(--muted);">N&nbsp;<span style="color:var(--text);">10,754</span></span>
+      </div>
+    </div>
+
+    <!-- KPI STRIP -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;margin-bottom:26px;">
+      <div style="padding:18px 20px;border-right:1px solid var(--line);">
+        <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;margin-bottom:9px;">分析対象</div>
+        <div class="mono" style="font-size:25px;font-weight:600;letter-spacing:-0.01em;"><span id="kPlayers">10,754</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;">登録選手数</div>
+      </div>
+      <div style="padding:18px 20px;border-right:1px solid var(--line);">
+        <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;margin-bottom:9px;">平均市場価値</div>
+        <div class="mono" style="font-size:25px;font-weight:600;letter-spacing:-0.01em;"><span id="kAvg">€3.7M</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;">約589百万円</div>
+      </div>
+      <div style="padding:18px 20px;border-right:1px solid var(--line);">
+        <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;margin-bottom:9px;">最高市場価値</div>
+        <div class="mono" style="font-size:25px;font-weight:600;letter-spacing:-0.01em;"><span id="kMax">€200.0M</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;">Vinícius Júnior</div>
+      </div>
+      <div style="padding:18px 20px;border-right:1px solid var(--line);">
+        <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;margin-bottom:9px;">モデル精度 R²</div>
+        <div class="mono" style="font-size:25px;font-weight:600;letter-spacing:-0.01em;color:var(--accent);"><span id="kR2">0.671</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;">±0.015 · 5-fold CV</div>
+      </div>
+      <div style="padding:18px 20px;">
+        <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;margin-bottom:9px;">予測誤差 MAE</div>
+        <div class="mono" style="font-size:25px;font-weight:600;letter-spacing:-0.01em;"><span id="kMae">€2.2M</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;">テスト平均誤差</div>
+      </div>
+    </div>
+
+    <!-- TAB NAV -->
+    <div style="position:relative;display:flex;border-bottom:1px solid var(--line);margin-bottom:24px;">
+      <button data-tab="bargain" class="tabbtn" style="flex:1;background:none;border:none;cursor:pointer;padding:13px 8px;font-size:13.5px;font-weight:600;color:var(--text);transition:color .2s;display:flex;align-items:center;justify-content:center;gap:8px;"><span class="mono" style="font-size:10px;color:var(--faint);">01</span>コスパ発掘</button>
+      <button data-tab="predict" class="tabbtn" style="flex:1;background:none;border:none;cursor:pointer;padding:13px 8px;font-size:13.5px;font-weight:600;color:var(--muted);transition:color .2s;display:flex;align-items:center;justify-content:center;gap:8px;"><span class="mono" style="font-size:10px;color:var(--faint);">02</span>価値を予測</button>
+      <button data-tab="analysis" class="tabbtn" style="flex:1;background:none;border:none;cursor:pointer;padding:13px 8px;font-size:13.5px;font-weight:600;color:var(--muted);transition:color .2s;display:flex;align-items:center;justify-content:center;gap:8px;"><span class="mono" style="font-size:10px;color:var(--faint);">03</span>データ分析</button>
+      <button data-tab="model" class="tabbtn" style="flex:1;background:none;border:none;cursor:pointer;padding:13px 8px;font-size:13.5px;font-weight:600;color:var(--muted);transition:color .2s;display:flex;align-items:center;justify-content:center;gap:8px;"><span class="mono" style="font-size:10px;color:var(--faint);">04</span>モデル詳細</button>
+      <div id="tabInd" style="position:absolute;bottom:-1px;left:0;width:25%;height:2px;background:var(--accent);box-shadow:0 0 10px var(--accent-dim);transition:left .32s cubic-bezier(.4,0,.2,1);"></div>
+    </div>
+
+    <!-- ============ PANEL 01 : BARGAIN ============ -->
+    <div data-panel="bargain">
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px;font-size:12.5px;color:var(--muted);">
+        <span style="display:inline-flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--pos);"></span><span style="color:var(--text);font-weight:600;">割安</span>＝ AI予測より実価格が低い（実力比で低評価）</span>
+        <span style="display:inline-flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--neg);"></span><span style="color:var(--text);font-weight:600;">割高</span>＝ AI予測より実価格が高い（名声・人気で上振れ）</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:3px;height:16px;background:var(--pos);border-radius:2px;"></span><span style="font-weight:600;font-size:14px;">割安 TOP 8</span></div>
+            <span class="mono" style="font-size:10px;letter-spacing:0.14em;color:var(--pos);padding:3px 8px;background:var(--pos-dim);border-radius:4px;">UNDERVALUED</span>
+          </div>
+          <div class="thead cols"><span>#</span><span>PLAYER</span><span>POS</span><span>AGE</span><span style="text-align:right;">実価格</span><span style="text-align:right;">AI予測</span><span style="text-align:right;">乖離</span></div>
+          <div id="bargainRows"></div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:3px;height:16px;background:var(--neg);border-radius:2px;"></span><span style="font-weight:600;font-size:14px;">割高 TOP 8</span></div>
+            <span class="mono" style="font-size:10px;letter-spacing:0.14em;color:var(--neg);padding:3px 8px;background:var(--neg-dim);border-radius:4px;">OVERVALUED</span>
+          </div>
+          <div class="thead cols"><span>#</span><span>PLAYER</span><span>POS</span><span>AGE</span><span style="text-align:right;">実価格</span><span style="text-align:right;">AI予測</span><span style="text-align:right;">乖離</span></div>
+          <div id="overRows"></div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:18px 20px;margin-top:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-weight:600;font-size:14px;">バリュエーション・マップ</div>
+          <div class="mono" style="font-size:10.5px;color:var(--muted);">対角線より<span style="color:var(--pos);">上＝割安</span> / <span style="color:var(--neg);">下＝割高</span></div>
+        </div>
+        <div class="mono" style="font-size:11.5px;color:var(--faint);margin-bottom:16px;">X: 実際の市場価値 (log) &nbsp;·&nbsp; Y: AI予測価値 (log)</div>
+        <div style="position:relative;height:360px;background:var(--inset);border:1px solid var(--line);border-radius:8px;overflow:hidden;" id="valueMap">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"><line x1="0" y1="100" x2="100" y2="0" stroke="var(--line2)" stroke-width="0.35" stroke-dasharray="1.6 1.6"></line></svg>
+          <span class="mono" style="position:absolute;left:10px;bottom:8px;font-size:9.5px;color:var(--faint);">割安ゾーン</span>
+          <span class="mono" style="position:absolute;right:10px;top:8px;font-size:9.5px;color:var(--faint);">割高ゾーン</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 02 : PREDICT ============ -->
+    <div data-panel="predict" style="display:none;">
+      <div class="mono" style="display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:9px;background:var(--panel);margin-bottom:20px;font-size:12px;">
+        <button id="ptExisting" style="background:var(--accent-dim);border:none;cursor:pointer;color:var(--text);padding:7px 16px;border-radius:6px;font-family:inherit;font-size:12px;transition:.2s;">既存選手で照合</button>
+        <button id="ptCustom" style="background:transparent;border:none;cursor:pointer;color:var(--muted);padding:7px 16px;border-radius:6px;font-family:inherit;font-size:12px;transition:.2s;">カスタム入力</button>
+      </div>
+
+      <div id="predExisting" style="display:grid;grid-template-columns:1.1fr 1fr;gap:18px;">
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;">
+          <label class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;">SELECT PLAYER</label>
+          <select id="playerSel" style="width:100%;margin-top:9px;background:var(--inset);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:11px 13px;font-family:'IBM Plex Sans JP',sans-serif;font-size:14px;cursor:pointer;"></select>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:22px;">
+            <div id="spName" style="font-size:22px;font-weight:700;"></div>
+            <div class="mono" id="spTeam" style="font-size:12px;color:var(--muted);"></div>
+          </div>
+          <div class="mono" style="display:flex;gap:8px;margin-top:12px;font-size:11px;">
+            <span style="padding:4px 10px;border:1px solid var(--line2);border-radius:5px;color:var(--muted);">POS&nbsp;<span id="spPos" style="color:var(--text);"></span></span>
+            <span style="padding:4px 10px;border:1px solid var(--line2);border-radius:5px;color:var(--muted);">AGE&nbsp;<span id="spAge" style="color:var(--text);"></span></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:22px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;">
+            <div style="background:var(--panel);padding:16px 18px;"><div class="mono" style="font-size:10px;letter-spacing:0.12em;color:var(--faint);text-transform:uppercase;margin-bottom:8px;">実際の市場価値</div><div class="mono" id="spActual" style="font-size:24px;font-weight:600;"></div></div>
+            <div style="background:var(--panel);padding:16px 18px;"><div class="mono" style="font-size:10px;letter-spacing:0.12em;color:var(--faint);text-transform:uppercase;margin-bottom:8px;">AI 予測価値</div><div class="mono" id="spPred" style="font-size:24px;font-weight:600;color:var(--accent);"></div></div>
+          </div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;align-self:flex-start;">AI VALUATION GAUGE</div>
+          <div style="position:relative;width:260px;height:150px;margin-top:14px;">
+            <svg viewBox="0 0 200 116" style="width:100%;height:100%;">
+              <path d="M14 104 A86 86 0 0 1 186 104" fill="none" stroke="var(--line2)" stroke-width="13" stroke-linecap="round" pathLength="100"></path>
+              <path id="gaugeArc" d="M14 104 A86 86 0 0 1 186 104" fill="none" stroke="var(--accent)" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" style="transition:stroke-dasharray .6s cubic-bezier(.4,0,.2,1);filter:drop-shadow(0 0 6px var(--accent-dim));"></path>
+            </svg>
+            <div style="position:absolute;left:0;right:0;bottom:10px;text-align:center;"><div class="mono" id="spPredCenter" style="font-size:28px;font-weight:700;color:var(--accent);"></div><div class="mono" style="font-size:10px;color:var(--faint);letter-spacing:0.1em;">AI FAIR VALUE</div></div>
+          </div>
+          <div style="margin-top:10px;padding:10px 20px;border-radius:8px;background:var(--inset);border:1px solid var(--line);text-align:center;">
+            <span class="mono" id="spVerdict" style="font-size:13px;font-weight:600;"></span>
+            <span class="mono" id="spGap" style="font-size:13px;font-weight:600;margin-left:10px;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="predCustom" style="display:none;grid-template-columns:1.1fr 1fr;gap:18px;">
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:22px;">
+          <div class="mono" style="font-size:10px;letter-spacing:0.16em;color:var(--faint);text-transform:uppercase;margin-bottom:18px;">INPUT STATS</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;"><label style="font-size:13px;">年齢</label><span class="mono" id="lAge" style="font-size:13px;color:var(--accent);">23歳</span></div>
+          <input id="iAge" type="range" min="16" max="38" step="1" value="23" style="width:100%;accent-color:var(--accent);margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;"><label style="font-size:13px;">1試合あたりゴール</label><span class="mono" id="lGoals" style="font-size:13px;color:var(--accent);">0.45</span></div>
+          <input id="iGoals" type="range" min="0" max="1.2" step="0.01" value="0.45" style="width:100%;accent-color:var(--accent);margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;"><label style="font-size:13px;">1試合あたりアシスト</label><span class="mono" id="lAssists" style="font-size:13px;color:var(--accent);">0.22</span></div>
+          <input id="iAssists" type="range" min="0" max="0.8" step="0.01" value="0.22" style="width:100%;accent-color:var(--accent);margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;"><label style="font-size:13px;">1試合あたり出場時間</label><span class="mono" id="lMins" style="font-size:13px;color:var(--accent);">76分</span></div>
+          <input id="iMins" type="range" min="0" max="90" step="1" value="76" style="width:100%;accent-color:var(--accent);margin-bottom:18px;">
+          <label style="font-size:13px;display:block;margin-bottom:7px;">ポジション</label>
+          <select id="iPos" style="width:100%;background:var(--inset);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;font-family:'IBM Plex Sans JP',sans-serif;font-size:13px;cursor:pointer;">
+            <option value="GK">GK · ゴールキーパー</option><option value="CB">CB · センターバック</option><option value="FB">FB · サイドバック</option><option value="DM">DM · 守備的MF</option><option value="CM">CM · 中央MF</option><option value="AM" selected>AM · 攻撃的MF</option><option value="RW">RW · 右ウイング</option><option value="LW">LW · 左ウイング</option><option value="CF">CF · センターFW</option>
+          </select>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:12px;background:linear-gradient(160deg,var(--panel),var(--inset));padding:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">
+          <div class="mono" style="font-size:10px;letter-spacing:0.18em;color:var(--faint);text-transform:uppercase;">ESTIMATED FAIR VALUE</div>
+          <div class="mono" id="cVal" style="font-size:52px;font-weight:700;color:var(--accent);margin:16px 0 6px;letter-spacing:-0.02em;text-shadow:0 0 28px var(--accent-dim);">€78.1M</div>
+          <div class="mono" id="cJpy" style="font-size:14px;color:var(--muted);">約12496百万円</div>
+          <div style="margin-top:20px;font-size:12px;color:var(--faint);line-height:1.6;max-width:280px;">スタッツを動かすと XGBoost が学習した価値関数に基づいてリアルタイムに再計算します。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 03 : ANALYSIS ============ -->
+    <div data-panel="analysis" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">ポジション別 市場価値（中央値）</div>
+          <div class="mono" style="font-size:10.5px;color:var(--faint);margin-bottom:18px;">MEDIAN VALUE BY POSITION</div>
+          <div id="posBars"></div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">チーム別 平均市場価値 TOP 10</div>
+          <div class="mono" style="font-size:10.5px;color:var(--faint);margin-bottom:18px;">MEAN VALUE BY CLUB</div>
+          <div id="teamBars"></div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;margin-top:18px;">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px;">年齢 × 市場価値の分布</div>
+        <div class="mono" style="font-size:10.5px;color:var(--faint);margin-bottom:16px;">X: AGE 16–38 &nbsp;·&nbsp; Y: MARKET VALUE (log) &nbsp;·&nbsp; ピーク年齢 ≈ 24</div>
+        <div style="position:relative;height:320px;background:var(--inset);border:1px solid var(--line);border-radius:8px;overflow:hidden;" id="ageMap"></div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 04 : MODEL ============ -->
+    <div data-panel="model" style="display:none;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px;">特徴量重要度 TOP 12</div>
+          <div class="mono" style="font-size:10.5px;color:var(--faint);margin-bottom:18px;">価値を左右する要因 · FEATURE IMPORTANCE</div>
+          <div id="impBars"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px;">
+          <div style="border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:20px;">
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px;">予測精度（実際 vs AI予測）</div>
+            <div class="mono" style="font-size:10.5px;color:var(--faint);margin-bottom:16px;">対角線に近いほど高精度</div>
+            <div style="position:relative;height:230px;background:var(--inset);border:1px solid var(--line);border-radius:8px;overflow:hidden;" id="accMap">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"><line x1="0" y1="100" x2="100" y2="0" stroke="var(--accent)" stroke-width="0.4" stroke-dasharray="1.6 1.6" opacity="0.55"></line></svg>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;">
+            <div style="background:var(--panel);padding:16px;"><div class="mono" style="font-size:9.5px;letter-spacing:0.1em;color:var(--faint);text-transform:uppercase;margin-bottom:8px;">CV R²</div><div class="mono" style="font-size:20px;font-weight:600;color:var(--accent);">0.671</div><div style="font-size:10px;color:var(--faint);margin-top:3px;">±0.015</div></div>
+            <div style="background:var(--panel);padding:16px;"><div class="mono" style="font-size:9.5px;letter-spacing:0.1em;color:var(--faint);text-transform:uppercase;margin-bottom:8px;">TEST R²</div><div class="mono" style="font-size:20px;font-weight:600;">0.683</div><div style="font-size:10px;color:var(--faint);margin-top:3px;">hold-out</div></div>
+            <div style="background:var(--panel);padding:16px;"><div class="mono" style="font-size:9.5px;letter-spacing:0.1em;color:var(--faint);text-transform:uppercase;margin-bottom:8px;">MAE</div><div class="mono" style="font-size:20px;font-weight:600;">€2.2M</div><div style="font-size:10px;color:var(--faint);margin-top:3px;">平均誤差</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">
+        <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 18px;flex:1;min-width:200px;"><div class="mono" style="font-size:10px;letter-spacing:0.12em;color:var(--accent);margin-bottom:7px;">ALGORITHM</div><div style="font-size:13px;">XGBoost Regressor</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">n_estimators=500 · max_depth=6</div></div>
+        <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 18px;flex:1;min-width:200px;"><div class="mono" style="font-size:10px;letter-spacing:0.12em;color:var(--accent);margin-bottom:7px;">TARGET</div><div style="font-size:13px;">current_value（log1p変換）</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">右裾の歪みを補正</div></div>
+        <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 18px;flex:1;min-width:200px;"><div class="mono" style="font-size:10px;letter-spacing:0.12em;color:var(--accent);margin-bottom:7px;">FEATURES</div><div style="font-size:13px;">21個（基本15 + 派生4 + カテゴリ2）</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">per-game 正規化を採用</div></div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="mono" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:40px;padding-top:20px;border-top:1px solid var(--line);font-size:10.5px;color:var(--faint);">
+      <span>DATA · Transfermarkt / Kaggle Player Scores &nbsp;|&nbsp; MODEL · XGBoost &nbsp;|&nbsp; 教育・ポートフォリオ目的のデモ</span>
+      <div style="display:flex;gap:7px;">
+        <span style="padding:3px 9px;border:1px solid var(--line);border-radius:4px;">Python</span>
+        <span style="padding:3px 9px;border:1px solid var(--line);border-radius:4px;">scikit-learn</span>
+        <span style="padding:3px 9px;border:1px solid var(--line);border-radius:4px;">XGBoost</span>
+        <span style="padding:3px 9px;border:1px solid var(--line);border-radius:4px;">Plotly</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+// ===== 代表データ（デモ用。実モデルは Streamlit 版） =====
+// [名前, チーム, POS, 年齢, 実価格(€M), AI予測(€M)]
+var DATA = [
+  ['Vinícius Júnior','Real Madrid','LW',24,200,205],
+  ['Jude Bellingham','Real Madrid','AM',21,180,176],
+  ['Erling Haaland','Man City','CF',24,180,185],
+  ['Kylian Mbappé','Real Madrid','CF',26,160,157],
+  ['Bukayo Saka','Arsenal','RW',23,140,147],
+  ['Florian Wirtz','Leverkusen','AM',21,140,179],
+  ['Jamal Musiala','Bayern','AM',22,140,150],
+  ['Lamine Yamal','Barcelona','RW',17,120,168],
+  ['Pedri','Barcelona','CM',22,100,121],
+  ['Federico Valverde','Real Madrid','CM',26,130,134],
+  ['Rodri','Man City','DM',28,110,108],
+  ['Phil Foden','Man City','AM',24,130,126],
+  ['Gavi','Barcelona','CM',20,90,118],
+  ['Eduardo Camavinga','Real Madrid','CM',22,100,129],
+  ['Warren Zaïre-Emery','PSG','DM',19,70,96],
+  ['Adam Wharton','Crystal Palace','DM',20,35,53],
+  ['Serhou Guirassy','Dortmund','CF',28,40,59],
+  ['Ademola Lookman','Atalanta','LW',27,50,69],
+  ['Khvicha Kvaratskhelia','Napoli','LW',24,85,105],
+  ['Michael Olise','Bayern','RW',23,90,113],
+  ['Antony','Man Utd','RW',25,30,16],
+  ['Mason Mount','Man Utd','AM',26,35,22],
+  ['Kai Havertz','Arsenal','CF',26,70,50],
+  ['Jack Grealish','Man City','LW',30,50,33],
+  ['Romelu Lukaku','Napoli','CF',32,22,13],
+  ['João Félix','Chelsea','AM',26,40,27],
+  ['Jadon Sancho','Man Utd','LW',25,28,18],
+  ['Harry Maguire','Man Utd','CB',33,18,11]
+];
+
+var fmt = function (v) { return '€' + v.toFixed(1) + 'M'; };
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function el(id) { return document.getElementById(id); }
+
+var players = DATA.map(function (p) {
+  var n = p[0], team = p[1], pos = p[2], age = p[3], act = p[4], pred = p[5];
+  var gr = (pred - act) / act;
+  return { n: n, team: team, pos: pos, age: age, act: act, pred: pred, gr: gr, grPct: Math.round(gr * 100) };
+});
+
+// ===== ヘッダー: 時計 + KPIカウントアップ =====
+function startClock() {
+  var tick = function () { var d = new Date(); el('clock').textContent = d.toTimeString().slice(0, 8); };
+  tick(); setInterval(tick, 1000);
+}
+function countUp() {
+  var items = [
+    ['kPlayers', 10754, function (v) { return Math.round(v).toLocaleString('en-US'); }],
+    ['kAvg', 3.7, function (v) { return '€' + v.toFixed(1) + 'M'; }],
+    ['kMax', 200, function (v) { return '€' + v.toFixed(0) + '.0M'; }],
+    ['kR2', 0.671, function (v) { return v.toFixed(3); }],
+    ['kMae', 2.2, function (v) { return '€' + v.toFixed(1) + 'M'; }]
+  ];
+  var start = performance.now(), dur = 1250;
+  function step(now) {
+    var p = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - p, 3);
+    items.forEach(function (it) { el(it[0]).textContent = it[2](it[1] * e); });
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ===== ティッカー =====
+function buildTicker() {
+  var html = players.map(function (p) {
+    var col = p.gr >= 0 ? 'var(--pos)' : 'var(--neg)';
+    var arrow = p.gr > 0 ? '▲' : (p.gr < 0 ? '▼' : '▬');
+    return '<span style="display:inline-flex;align-items:baseline;gap:8px;padding:0 18px;font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'
+      + '<span style="color:var(--text);font-weight:500;">' + p.n.toUpperCase() + '</span>'
+      + '<span style="color:var(--muted);">' + fmt(p.act) + '</span>'
+      + '<span style="color:' + col + ';font-size:10px;">' + arrow + '</span></span>';
+  }).join('');
+  el('ticker1').innerHTML = html; el('ticker2').innerHTML = html;
+}
+
+// ===== コスパ発掘 =====
+function rowHtml(p, i) {
+  var gapColor = p.gr >= 0 ? 'var(--pos)' : 'var(--neg)';
+  var rank = String(i + 1).padStart(2, '0');
+  var barW = Math.min(100, Math.abs(p.grPct)) + '%';
+  var gap = (p.gr >= 0 ? '+' : '') + p.grPct + '%';
+  return '<div class="tabrow cols" style="animation-delay:' + (i * 0.04).toFixed(3) + 's;">'
+    + '<span class="mono" style="font-size:11px;color:var(--faint);">' + rank + '</span>'
+    + '<div style="min-width:0;"><div class="ellip" style="font-size:13px;font-weight:500;">' + p.n + '</div><div class="mono ellip" style="font-size:10px;color:var(--faint);">' + p.team + '</div></div>'
+    + '<span class="mono" style="font-size:10px;color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:2px 0;text-align:center;">' + p.pos + '</span>'
+    + '<span class="mono" style="font-size:12px;color:var(--muted);">' + p.age + '</span>'
+    + '<span class="mono" style="font-size:12px;color:var(--muted);text-align:right;">' + fmt(p.act) + '</span>'
+    + '<span class="mono" style="font-size:12px;color:var(--text);text-align:right;">' + fmt(p.pred) + '</span>'
+    + '<div style="display:flex;align-items:center;gap:7px;justify-content:flex-end;">'
+    + '<div style="flex:1;max-width:40px;height:4px;background:var(--line2);border-radius:2px;overflow:hidden;"><div style="height:100%;width:' + barW + ';background:' + gapColor + ';transform-origin:left;animation:barGrow .7s ease both;animation-delay:' + (i * 0.04).toFixed(3) + 's;"></div></div>'
+    + '<span class="mono" style="font-size:12px;font-weight:600;color:' + gapColor + ';min-width:40px;text-align:right;">' + gap + '</span></div></div>';
+}
+function buildBargain() {
+  var elig = players.filter(function (p) { return p.act >= 10; });
+  var bargains = elig.slice().sort(function (a, b) { return b.gr - a.gr; }).slice(0, 8);
+  var over = elig.slice().sort(function (a, b) { return a.gr - b.gr; }).slice(0, 8);
+  el('bargainRows').innerHTML = bargains.map(rowHtml).join('');
+  el('overRows').innerHTML = over.map(rowHtml).join('');
+  // value map
+  var lMin = Math.log10(8), lMax = Math.log10(230), rg = lMax - lMin;
+  var px = function (v) { return (Math.log10(Math.max(6, v)) - lMin) / rg * 100; };
+  var map = el('valueMap');
+  players.forEach(function (p, i) {
+    var d = document.createElement('div');
+    d.title = p.n;
+    d.style.cssText = 'position:absolute;left:' + px(p.act).toFixed(2) + '%;top:' + (100 - px(p.pred)).toFixed(2) + '%;width:8px;height:8px;margin:-4px;border-radius:50%;background:' + (p.gr >= 0 ? 'var(--pos)' : 'var(--neg)') + ';box-shadow:0 0 8px ' + (p.gr >= 0 ? 'var(--pos)' : 'var(--neg)') + ';animation:dotIn .5s ease both;animation-delay:' + (i * 0.02).toFixed(3) + 's;';
+    map.appendChild(d);
+  });
+}
+
+// ===== データ分析 =====
+function buildAnalysis() {
+  var posRaw = [['WINGER', 16.0], ['ATTACKING MID', 15.0], ['CENTRE-FORWARD', 14.0], ['CENTRE MID', 11.0], ['DEFENSIVE MID', 9.5], ['FULL-BACK', 9.0], ['CENTRE-BACK', 8.0], ['GOALKEEPER', 6.0]];
+  var pMax = Math.max.apply(null, posRaw.map(function (x) { return x[1]; }));
+  el('posBars').innerHTML = posRaw.map(function (x, i) {
+    return '<div style="display:grid;grid-template-columns:120px 1fr 56px;gap:12px;align-items:center;margin-bottom:11px;">'
+      + '<span class="mono" style="font-size:10.5px;color:var(--muted);">' + x[0] + '</span>'
+      + '<div style="height:9px;background:var(--inset);border-radius:5px;overflow:hidden;"><div style="height:100%;width:' + (x[1] / pMax * 100).toFixed(1) + '%;background:linear-gradient(90deg,rgba(214,162,58,0.5),var(--accent));border-radius:5px;transform-origin:left;animation:barGrow .8s cubic-bezier(.4,0,.2,1) both;animation-delay:' + (i * 0.05).toFixed(3) + 's;"></div></div>'
+      + '<span class="mono" style="font-size:12px;text-align:right;">€' + x[1].toFixed(1) + 'M</span></div>';
+  }).join('');
+  var teamRaw = [['Real Madrid', 92], ['Man City', 76], ['PSG', 71], ['Barcelona', 64], ['Bayern', 60], ['Arsenal', 57], ['Liverpool', 53], ['Chelsea', 49], ['Atlético', 42], ['Dortmund', 36]];
+  var tMax = Math.max.apply(null, teamRaw.map(function (x) { return x[1]; }));
+  el('teamBars').innerHTML = teamRaw.map(function (x, i) {
+    return '<div style="display:grid;grid-template-columns:108px 1fr 56px;gap:12px;align-items:center;margin-bottom:9px;">'
+      + '<span class="ellip" style="font-size:11.5px;color:var(--muted);">' + x[0] + '</span>'
+      + '<div style="height:9px;background:var(--inset);border-radius:5px;overflow:hidden;"><div style="height:100%;width:' + (x[1] / tMax * 100).toFixed(1) + '%;background:linear-gradient(90deg,rgba(72,192,122,0.4),var(--pos));border-radius:5px;transform-origin:left;animation:barGrow .8s cubic-bezier(.4,0,.2,1) both;animation-delay:' + (i * 0.05).toFixed(3) + 's;"></div></div>'
+      + '<span class="mono" style="font-size:12px;text-align:right;">€' + x[1] + '.0M</span></div>';
+  }).join('');
+  // age scatter
+  var rnd = rng(19), ages = [];
+  players.forEach(function (p) { ages.push({ age: p.age, v: p.act, star: p.act >= 90 }); });
+  for (var i = 0; i < 90; i++) { var age = 16 + rnd() * 22; var peak = 1 - Math.abs(age - 24) / 26; var v = Math.pow(10, 0.75 + rnd() * 1.3 * Math.max(0.35, peak + 0.3)); ages.push({ age: age, v: v, star: false }); }
+  var aMin = Math.log10(3), aMax = Math.log10(230), arg = aMax - aMin, map = el('ageMap');
+  ages.forEach(function (d, i) {
+    var node = document.createElement('div');
+    node.style.cssText = 'position:absolute;left:' + ((d.age - 15) / 24 * 100).toFixed(2) + '%;top:' + (100 - (Math.log10(Math.max(3, d.v)) - aMin) / arg * 100).toFixed(2) + '%;width:' + (d.star ? '9px' : '6px') + ';height:' + (d.star ? '9px' : '6px') + ';margin:-3px;border-radius:50%;background:' + (d.star ? 'var(--accent)' : 'rgba(214,162,58,0.5)') + ';opacity:' + (d.star ? '1' : '0.45') + ';animation:dotIn .5s ease both;animation-delay:' + ((i % 30) * 0.012).toFixed(3) + 's;';
+    map.appendChild(node);
+  });
+}
+
+// ===== モデル詳細 =====
+function buildModel() {
+  var impRaw = [['age', 0.214], ['minutes / game', 0.158], ['goals / game', 0.126], ['appearances', 0.104], ['position', 0.088], ['assists / game', 0.071], ['injury rate', 0.058], ['team', 0.049], ['height', 0.041], ['goals', 0.034], ['red cards', 0.031], ['clean sheets', 0.026]];
+  var iMax = impRaw[0][1];
+  el('impBars').innerHTML = impRaw.map(function (x, i) {
+    return '<div style="display:grid;grid-template-columns:118px 1fr 48px;gap:12px;align-items:center;margin-bottom:9px;">'
+      + '<span class="mono ellip" style="font-size:11px;color:var(--muted);">' + x[0] + '</span>'
+      + '<div style="height:8px;background:var(--inset);border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + (x[1] / iMax * 100).toFixed(1) + '%;background:var(--accent);border-radius:4px;transform-origin:left;animation:barGrow .8s cubic-bezier(.4,0,.2,1) both;animation-delay:' + (i * 0.04).toFixed(3) + 's;"></div></div>'
+      + '<span class="mono" style="font-size:11.5px;color:var(--muted);text-align:right;">' + x[1].toFixed(3) + '</span></div>';
+  }).join('');
+  // accuracy scatter
+  var lMin = Math.log10(8), lMax = Math.log10(230), rg = lMax - lMin;
+  var px = function (v) { return (Math.log10(Math.max(6, v)) - lMin) / rg * 100; };
+  var rnd = rng(7), acc = [];
+  players.forEach(function (p) { acc.push({ a: p.act, pr: p.pred, neg: p.gr < 0 }); });
+  for (var i = 0; i < 70; i++) { var a = Math.pow(10, 0.8 + rnd() * 1.55); var pr = a * Math.pow(10, (rnd() - 0.5) * 0.5); acc.push({ a: a, pr: pr, neg: pr < a }); }
+  var map = el('accMap');
+  acc.forEach(function (d, i) {
+    var node = document.createElement('div');
+    node.style.cssText = 'position:absolute;left:' + px(d.a).toFixed(2) + '%;top:' + (100 - px(d.pr)).toFixed(2) + '%;width:6px;height:6px;margin:-3px;border-radius:50%;background:' + (d.neg ? 'var(--neg)' : 'var(--pos)') + ';opacity:0.7;animation:dotIn .5s ease both;animation-delay:' + ((i % 30) * 0.012).toFixed(3) + 's;';
+    map.appendChild(node);
+  });
+}
+
+// ===== 予測: 既存選手 =====
+function buildSelect() {
+  el('playerSel').innerHTML = players.map(function (p, i) { return '<option value="' + i + '">' + p.n + ' — ' + p.team + '</option>'; }).join('');
+  el('playerSel').addEventListener('change', function (e) { renderExisting(+e.target.value); });
+  renderExisting(0);
+}
+function renderExisting(i) {
+  var sp = players[i] || players[0];
+  el('spName').textContent = sp.n;
+  el('spTeam').textContent = sp.team;
+  el('spPos').textContent = sp.pos;
+  el('spAge').textContent = sp.age + '歳';
+  el('spActual').textContent = fmt(sp.act);
+  el('spPred').textContent = fmt(sp.pred);
+  el('spPredCenter').textContent = '€' + sp.pred.toFixed(0) + 'M';
+  var axisMax = Math.max(sp.act, sp.pred) * 1.25;
+  var pct = (sp.pred / axisMax * 100).toFixed(2);
+  el('gaugeArc').setAttribute('stroke-dasharray', pct + ' 100');
+  var col = sp.gr >= 0 ? 'var(--pos)' : 'var(--neg)';
+  var vd = el('spVerdict'); vd.textContent = sp.gr >= 0 ? '割安 UNDERVALUED' : '割高 OVERVALUED'; vd.style.color = col;
+  var gp = el('spGap'); gp.textContent = (sp.gr >= 0 ? '+' : '') + sp.grPct + '%'; gp.style.color = col;
+}
+
+// ===== 予測: カスタム =====
+var cv = { age: 23, goals: 0.45, assists: 0.22, mins: 76, pos: 'AM' };
+function recompute() {
+  var baseMap = { GK: 8, CB: 12, FB: 14, DM: 17, CM: 21, AM: 26, RW: 25, LW: 25, CF: 29 };
+  var base = baseMap[cv.pos] || 20;
+  var a = cv.age, af = 1.42 - 0.034 * Math.abs(a - 22); if (a > 27) af -= 0.06 * (a - 27); af = Math.max(0.3, Math.min(1.5, af));
+  var v = base * af * (1 + cv.goals * 1.05 + cv.assists * 0.8 + (cv.mins / 100) * 0.5);
+  v = Math.max(0.5, v);
+  el('cVal').textContent = '€' + v.toFixed(1) + 'M';
+  el('cJpy').textContent = '約' + Math.round(v * 160) + '百万円';
+}
+function bindCustom() {
+  el('iAge').addEventListener('input', function (e) { cv.age = +e.target.value; el('lAge').textContent = cv.age + '歳'; recompute(); });
+  el('iGoals').addEventListener('input', function (e) { cv.goals = +e.target.value; el('lGoals').textContent = cv.goals.toFixed(2); recompute(); });
+  el('iAssists').addEventListener('input', function (e) { cv.assists = +e.target.value; el('lAssists').textContent = cv.assists.toFixed(2); recompute(); });
+  el('iMins').addEventListener('input', function (e) { cv.mins = +e.target.value; el('lMins').textContent = cv.mins + '分'; recompute(); });
+  el('iPos').addEventListener('change', function (e) { cv.pos = e.target.value; recompute(); });
+  recompute();
+}
+
+// ===== タブ切替 =====
+var TABS = ['bargain', 'predict', 'analysis', 'model'];
+function setTab(name) {
+  TABS.forEach(function (t, i) {
+    document.querySelector('[data-panel="' + t + '"]').style.display = (t === name) ? '' : 'none';
+  });
+  document.querySelectorAll('.tabbtn').forEach(function (b) {
+    b.style.color = (b.getAttribute('data-tab') === name) ? 'var(--text)' : 'var(--muted)';
+  });
+  var idx = TABS.indexOf(name);
+  el('tabInd').style.left = (idx * 25) + '%';
+  // re-trigger fade
+  var p = document.querySelector('[data-panel="' + name + '"]');
+  p.style.animation = 'none'; void p.offsetWidth; p.style.animation = 'fadeUp .42s ease both';
+}
+function setPredTab(name) {
+  var ex = name === 'existing';
+  el('predExisting').style.display = ex ? 'grid' : 'none';
+  el('predCustom').style.display = ex ? 'none' : 'grid';
+  el('ptExisting').style.background = ex ? 'var(--accent-dim)' : 'transparent';
+  el('ptExisting').style.color = ex ? 'var(--text)' : 'var(--muted)';
+  el('ptCustom').style.background = ex ? 'transparent' : 'var(--accent-dim)';
+  el('ptCustom').style.color = ex ? 'var(--muted)' : 'var(--text)';
+}
+
+// ===== INIT =====
+document.querySelectorAll('.tabbtn').forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
+el('ptExisting').addEventListener('click', function () { setPredTab('existing'); });
+el('ptCustom').addEventListener('click', function () { setPredTab('custom'); });
+
+startClock();
+countUp();
+buildTicker();
+buildBargain();
+buildAnalysis();
+buildModel();
+buildSelect();
+bindCustom();
+setTab('bargain');
+</script>
+</body>
+</html>
