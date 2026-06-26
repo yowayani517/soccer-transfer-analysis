@@ -1,62 +1,95 @@
-# ⚽ サッカー選手 市場価値分析・予測
+<div align="center">
 
-Transfermarktの選手データ（10,754名）を用いて、選手の市場価値を機械学習で予測するWebアプリ。
-**XGBoost** によるモデル化と **Streamlit** によるインタラクティブな分析ダッシュボードを提供する。
+# ⚽ サッカー移籍市場 AI分析ダッシュボード
 
-## 主な機能
+**Transfermarktの選手データ 10,754名から市場価値を予測し、「実力のわりに割安な選手」を自動発掘するWebアプリAI**
+
+<img src="https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white">
+<img src="https://img.shields.io/badge/XGBoost-regression-EB5E28">
+<img src="https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white">
+<img src="https://img.shields.io/badge/Plotly-interactive-3F4F75?logo=plotly&logoColor=white">
+<img src="https://img.shields.io/badge/CV_R²-0.67-2e7d32">
+
+<br>
+
+<img src="docs/demo.gif" alt="ダッシュボードのデモ" width="780">
+
+</div>
+
+---
+
+## 📌 概要
+
+サッカー選手の出場成績・年齢・ポジションなどから、**市場価値（移籍金）を機械学習で予測**するダッシュボード。
+モデルの予測値と実際の市場価値の乖離を使い、**「実力に対して市場が過小評価している割安な選手」**を自動で抽出できる。
+
+データソース：[Kaggle - Football Players Transfermarkt Dataset](https://www.kaggle.com/datasets/davidcariboo/player-scores)
+
+---
+
+## ✨ 主な機能（4タブ構成）
 
 | タブ | 内容 |
-|---|---|
-| 📈 概要 | データ統計・市場価値TOP20選手・価値分布 |
-| 🔍 探索分析 | 年齢/ポジション/チーム別の価値比較 |
-| 🤖 選手予測 | 既存選手の予測値・カスタム入力での予測 |
-| 💎 割安/割高選手 | モデル予測と実際の価値の乖離から、割安・割高選手を抽出 |
-| 🎯 モデル解釈 | 特徴量重要度・予測精度の可視化 |
+|:---|:---|
+| 💎 **コスパ選手ランキング** | AIの予測値と実価格の乖離から「割安TOP20 / 割高TOP20」を抽出。全選手の割安・割高を散布図で可視化 |
+| 🔮 **移籍金を予測する** | 既存選手の適正価格をゲージで表示。スタッツを手入力したカスタム選手の市場価値も予測 |
+| 📊 **データ分析** | ポジション別・チーム別の価値比較、年齢×市場価値の分布を対話的に探索 |
+| 🤖 **AIモデルについて** | 特徴量重要度（価値を左右する要因TOP12）と予測精度（実際 vs 予測）を可視化 |
 
-## モデル
+---
+
+## 🧠 モデル
 
 | 項目 | 内容 |
-|---|---|
-| アルゴリズム | XGBoost (n=500, depth=6) |
-| 評価 | 5-fold 交差検証 + 80/20 ホールドアウト |
-| 目的変数 | `current_value`（log1p 変換） |
+|:---|:---|
+| アルゴリズム | **XGBoost**（回帰、n_estimators=500, max_depth=6） |
+| 目的変数 | `current_value`（**log1p 変換**で右裾の歪みを補正） |
 | 特徴量 | 21個（基本15 + 派生4 + カテゴリ2） |
+| 評価 | **5-fold 交差検証** + 80/20 ホールドアウト |
+| 精度 | 交差検証 **R² ≈ 0.67**、テスト平均誤差 MAE ≈ €2.2M |
 
-### 派生特徴量
-モデル精度向上のため、以下の特徴量を追加で生成：
+### 派生特徴量（精度向上の工夫）
+合計値ではなく **1試合あたり**に正規化し、出場数の違いを吸収：
+`goals_per_game` / `assists_per_game` / `minutes_per_game` / `injury_rate`（怪我による欠場率）
 
-- `goals_per_game` — 1試合あたりゴール
-- `assists_per_game` — 1試合あたりアシスト
-- `minutes_per_game` — 1試合あたり出場時間
-- `injury_rate` — 怪我による試合欠場率
+---
 
-## 工夫した点
+## 🔧 技術的な工夫
 
-1. **対数変換**：市場価値は分布の右裾が極端に長いため、`log1p` 変換で誤差を抑制
-2. **派生特徴量**：合計値ではなく per-game に正規化することで、出場数の違いを吸収
-3. **5-fold CV**：単一の train/test 分割に依存しない汎化性能評価
-4. **割安/割高分析**：モデル予測と実際の乖離から、市場で見落とされた選手を抽出する応用例を実装
+- **対数変換**：市場価値は分布の右裾が極端に長いため `log1p` 変換し、外れ値に引っ張られる誤差を抑制
+- **per-game 正規化**：通算成績では出場数の多いベテランが有利になるため、1試合あたりに変換して公平に評価
+- **5-fold 交差検証**：単一の train/test 分割に依存しない汎化性能を評価
+- **割安/割高分析**：予測と実価格の乖離（残差）を「市場の見落とし」として応用し、スカウティング観点の指標に変換
 
-## セットアップ
+---
+
+## 🛠️ 技術スタック
+
+| 領域 | 技術 |
+|:---|:---|
+| 言語 | Python 3.14 |
+| 機械学習 | scikit-learn / XGBoost |
+| データ処理 | pandas / NumPy |
+| UI | Streamlit |
+| 可視化 | Plotly（インタラクティブ） |
+
+---
+
+## 🚀 セットアップ
 
 ```bash
 pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-データは `data/final_data.csv` に配置。出典：[Kaggle: Football Players Transfermarkt Dataset](https://www.kaggle.com/datasets/davidcariboo/player-scores)
+ブラウザで `http://localhost:8501` が開きます。データは `data/final_data.csv` に配置してください。
+（初回起動時、モデル学習に30〜60秒かかります）
 
-## 技術スタック
+---
 
-- **Python 3.14**
-- **scikit-learn** / **XGBoost** — 機械学習
-- **pandas** / **numpy** — データ処理
-- **Streamlit** — UI
-- **Plotly** — インタラクティブ可視化
-
-## 今後の改善点
+## 📈 今後の改善
 
 - [ ] SHAP値による個別予測の説明可能性
-- [ ] LightGBM / CatBoost との比較
+- [ ] LightGBM / CatBoost との精度比較
 - [ ] 時系列での市場価値トレンド分析
 - [ ] チーム・リーグ集約特徴量の追加
