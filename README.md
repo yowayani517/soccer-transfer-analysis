@@ -1,9 +1,8 @@
 <div align="center">
 
-# ⚽ Transfer Alpha — サッカー移籍市場 AI分析ターミナル
+# ⚽ サッカー移籍市場 AI分析ダッシュボード
 
-**Transfermarktの選手データ 10,754名から市場価値を予測し、「実力のわりに割安な選手」を自動発掘するWebアプリAI**
-（Bloomberg端末風UI × 実XGBoostモデル推論）
+**Transfermarktの選手データ 10,754名から市場価値を予測し、「実力のわりに割安な選手」を自動発掘するWebアプリ**
 
 <img src="https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white">
 <img src="https://img.shields.io/badge/XGBoost-regression-EB5E28">
@@ -26,10 +25,7 @@
 
 データソース：[Kaggle - Football Players Transfermarkt Dataset](https://www.kaggle.com/datasets/davidcariboo/player-scores)
 
-UIは **Bloomberg端末風のダーク×アンバーデザイン**（IBM Plexフォント・VALUE FEEDティッカー・KPIストリップ）。
-表示される予測値・指標は、すべて **学習済みXGBoostモデルが実際に推論した結果** です（モックではありません）。
-
-> デザインは [Claude Design](https://claude.ai/design) で作成し、Streamlit に CSS / HTML で実装。チャートは Plotly を端末カラーにテーマ調整しています。
+UIに表示される予測値・指標は、すべて **学習済みXGBoostモデルが実際に推論した結果** であり、固定値のモックではない。フロントは Streamlit に CSS / HTML を組み込んで構築し、チャートは Plotly で描画している。
 
 ---
 
