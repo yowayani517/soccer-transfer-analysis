@@ -1,8 +1,9 @@
 <div align="center">
 
-# ⚽ サッカー移籍市場 AI分析ダッシュボード
+# ⚽ Transfer Alpha — サッカー移籍市場 AI分析ターミナル
 
 **Transfermarktの選手データ 10,754名から市場価値を予測し、「実力のわりに割安な選手」を自動発掘するWebアプリAI**
+（Bloomberg端末風UI × 実XGBoostモデル推論）
 
 <img src="https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white">
 <img src="https://img.shields.io/badge/XGBoost-regression-EB5E28">
@@ -25,30 +26,10 @@
 
 データソース：[Kaggle - Football Players Transfermarkt Dataset](https://www.kaggle.com/datasets/davidcariboo/player-scores)
 
-本プロジェクトには、用途の異なる **2つのフロントエンド** がある。
+UIは **Bloomberg端末風のダーク×アンバーデザイン**（IBM Plexフォント・VALUE FEEDティッカー・KPIストリップ）。
+表示される予測値・指標は、すべて **学習済みXGBoostモデルが実際に推論した結果** です（モックではありません）。
 
-| | 内容 | 技術 |
-|:---|:---|:---|
-| 🟢 **Streamlit アプリ**（[`app.py`](app.py)） | 学習済みXGBoostモデルが**実際に推論**するMLダッシュボード | Python / Streamlit / Plotly |
-| 🟡 **Transfer Alpha Terminal**（[`terminal/`](terminal/)） | 端末風UIの**静的フロント実装**（依存ゼロ・ダブルクリック起動） | Vanilla HTML / CSS / JS |
-
----
-
-## 🟡 Transfer Alpha Terminal（端末風UI）
-
-Bloomberg端末をイメージしたダーク×アンバーのUIデザイン。`terminal/index.html` を開くだけで動作（ライブラリ・ビルド不要）。
-
-<div align="center">
-<img src="docs/terminal-demo.gif" alt="Transfer Alpha Terminal のデモ" width="820">
-</div>
-
-- ライブ時計・KPIカウントアップ・VALUE FEED ティッカー
-- 4タブ（コスパ発掘 / 価値を予測 / データ分析 / モデル詳細）切替
-- 既存選手の予測ゲージ、スタッツを動かすとリアルタイム再計算するカスタム予測
-- バリュエーション・マップ、特徴量重要度、予測精度の散布図
-
-> ⚠️ ターミナル版に表示される数値は **UI実装のための代表値（デモ）** です。実際の学習モデルによる推論は Streamlit 版（`app.py`）で動作します。
-> デザインは [Claude Design](https://claude.ai/design) で作成し、独自ランタイムに依存しない単体のHTML/CSS/JSへ移植しました。
+> デザインは [Claude Design](https://claude.ai/design) で作成し、Streamlit に CSS / HTML で実装。チャートは Plotly を端末カラーにテーマ調整しています。
 
 ---
 
@@ -67,7 +48,7 @@ Bloomberg端末をイメージしたダーク×アンバーのUIデザイン。`
 
 | 項目 | 内容 |
 |:---|:---|
-| アルゴリズム | **XGBoost**（回帰、n_estimators=500, max_depth=6） |
+| アルゴリズム | **XGBoost**（回帰、n_estimators=1000, learning_rate=0.02, max_depth=7） |
 | 目的変数 | `current_value`（**log1p 変換**で右裾の歪みを補正） |
 | 特徴量 | 21個（基本15 + 派生4 + カテゴリ2） |
 | 評価 | **5-fold 交差検証** + 80/20 ホールドアウト |
